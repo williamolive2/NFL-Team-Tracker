@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NFL 32 Teams Checklist & Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-sport {
+      font-family: 'Teko', sans-serif;
+      letter-spacing: 0.05em;
+    }
+    .team-card {
+      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .team-card:hover:not(.is-crossed) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+    }
+    .is-crossed {
+      opacity: 0.38;
+      filter: grayscale(85%);
+      transform: scale(0.985);
+    }
+    .is-crossed .team-name-text {
+      text-decoration: line-through 3px currentColor;
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    @keyframes pulse-success {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .animate-success {
+      animation: pulse-success 0.4s ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-red-600 selection:text-white pb-16">
+
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/90 border-b border-slate-800/80 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-red-600 flex items-center justify-center font-sport text-2xl font-bold shadow-md shadow-indigo-900/40 border border-slate-700">
+          NFL
+        </div>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+            32 Teams Cross-Off Tracker
+          </h1>
+          <p class="text-xs text-slate-400">
+            Type any team, city, or mascot name to cross them off in real-time
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick status indicator in header -->
+      <div class="flex items-center gap-3">
+        <div class="bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-lg flex items-center gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Completed</span>
+          <span id="header-counter" class="font-sport text-xl text-emerald-400 font-bold leading-none">0 / 32</span>
+        </div>
+        <button id="header-reset-btn" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Reset
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+    <!-- Top Interactive Dashboard Box -->
+    <div class="bg-gradient-to-b from-slate-900/90 to-slate-900/50 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+      <div class="absolute -right-16 -top-16 w-56 h-56 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-16 -bottom-16 w-56 h-56 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative z-10">
+        <!-- Search Input with Auto-Cross Action -->
+        <div class="lg:col-span-7 space-y-2">
+          <label for="team-input" class="block text-xs font-semibold uppercase tracking-wider text-slate-300">
+            Type team name to cross off (e.g. "Chiefs", "Cowboys", "Green Bay", "Packers")
+          </label>
+          <div class="relative flex items-center">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+            <input 
+              id="team-input" 
+              type="text" 
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Start typing team, city, or mascot..." 
+              class="w-full pl-11 pr-24 py-3.5 bg-slate-950/80 border border-slate-700/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-white placeholder-slate-500 rounded-xl text-base font-medium shadow-inner transition outline-none"
+            >
+            <button 
+              id="clear-input-btn"
+              type="button" 
+              class="absolute right-2.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700 hidden"
+            >
+              Clear
+            </button>
+          </div>
+          <!-- Feedback Message Bar -->
+          <div id="feedback-banner" class="h-6 flex items-center text-xs font-medium text-slate-400 transition-all">
+            <span>Tip: Click directly on any team card or type its name above.</span>
+          </div>
+        </div>
+
+        <!-- Progress Tracker Bar & Stats -->
+        <div class="lg:col-span-5 bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-3">
+          <div class="flex justify-between items-baseline">
+            <span class="text-xs uppercase font-semibold tracking-wider text-slate-400">Checklist Progress</span>
+            <div class="flex items-baseline gap-1">
+              <span id="progress-count" class="font-sport text-3xl font-bold text-white">0</span>
+              <span class="text-slate-500 font-bold text-sm">/ 32</span>
+              <span id="progress-percent" class="text-xs font-bold text-blue-400 ml-2">(0%)</span>
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
+            <div 
+              id="progress-bar-fill" 
+              class="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-300 ease-out" 
+              style="width: 0%"
+            ></div>
+          </div>
+          <!-- Quick action buttons -->
+          <div class="flex items-center justify-between pt-1 gap-2">
+            <button id="cross-all-btn" class="flex-1 py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition-colors">
+              Cross Off All
+            </button>
+            <button id="uncheck-all-btn" class="flex-1 py-1.5 px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition-colors">
+              Uncheck All
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters Row -->
+      <div class="mt-5 pt-4 border-t border-slate-800/70 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-1.5 flex-wrap" id="status-filters">
+          <span class="text-xs font-semibold text-slate-400 mr-1">Show:</span>
+          <button data-filter="all" class="filter-status-btn active-filter px-3 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white shadow-sm transition-colors">All (32)</button>
+          <button data-filter="remaining" class="filter-status-btn px-3 py-1 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">Remaining (<span id="count-remaining">32</span>)</button>
+          <button data-filter="crossed" class="filter-status-btn px-3 py-1 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">Crossed Off (<span id="count-crossed">0</span>)</button>
+        </div>
+
+        <div class="flex items-center gap-1.5" id="conf-filters">
+          <span class="text-xs font-semibold text-slate-400 mr-1">Conference:</span>
+          <button data-conf="all" class="conf-filter-btn active-conf px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-700 text-white transition-colors">Both</button>
+          <button data-conf="AFC" class="conf-filter-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-800 text-red-400 hover:bg-slate-700 border border-red-950 transition-colors">AFC</button>
+          <button data-conf="NFC" class="conf-filter-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-800 text-blue-400 hover:bg-slate-700 border border-blue-950 transition-colors">NFC</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="teams-grid-container" class="space-y-8">
+      <!-- AFC Conference Section -->
+      <section id="conference-afc" class="space-y-4">
+        <div class="flex items-center gap-3 border-b-2 border-red-600/40 pb-2.5">
+          <span class="px-2.5 py-1 bg-red-600/20 text-red-400 font-sport text-2xl font-bold rounded-md border border-red-600/40 leading-none">AFC</span>
+          <h2 class="text-xl font-bold text-white tracking-wide">American Football Conference</h2>
+          <span id="afc-count-badge" class="ml-auto text-xs font-medium bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-full">0/16</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" id="afc-divisions-grid">
+          <!-- AFC Divisions will populate here -->
+        </div>
+      </section>
+
+      <!-- NFC Conference Section -->
+      <section id="conference-nfc" class="space-y-4">
+        <div class="flex items-center gap-3 border-b-2 border-blue-600/40 pb-2.5">
+          <span class="px-2.5 py-1 bg-blue-600/20 text-blue-400 font-sport text-2xl font-bold rounded-md border border-blue-600/40 leading-none">NFC</span>
+          <h2 class="text-xl font-bold text-white tracking-wide">National Football Conference</h2>
+          <span id="nfc-count-badge" class="ml-auto text-xs font-medium bg-slate-900 border border-slate-800 text-slate-400 px-2.5 py-1 rounded-full">0/16</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" id="nfc-divisions-grid">
+          <!-- NFC Divisions will populate here -->
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const NFL_TEAMS = [
+      // AFC EAST
+      { id: "buf", name: "Buffalo Bills", city: "Buffalo", mascot: "Bills", conf: "AFC", div: "East", color: "#00338D", altColor: "#C60C30", abbr: "BUF" },
+      { id: "mia", name: "Miami Dolphins", city: "Miami", mascot: "Dolphins", conf: "AFC", div: "East", color: "#008E97", altColor: "#FC4C02", abbr: "MIA" },
+      { id: "ne",  name: "New England Patriots", city: "New England", mascot: "Patriots", conf: "AFC", div: "East", color: "#002244", altColor: "#C60C30", abbr: "NE" },
+      { id: "nyj", name: "New York Jets", city: "New York", mascot: "Jets", conf: "AFC", div: "East", color: "#125740", altColor: "#000000", abbr: "NYJ" },
+
+      // AFC NORTH
+      { id: "bal", name: "Baltimore Ravens", city: "Baltimore", mascot: "Ravens", conf: "AFC", div: "North", color: "#241773", altColor: "#000000", abbr: "BAL" },
+      { id: "cin", name: "Cincinnati Bengals", city: "Cincinnati", mascot: "Bengals", conf: "AFC", div: "North", color: "#FB4F14", altColor: "#000000", abbr: "CIN" },
+      { id: "cle", name: "Cleveland Browns", city: "Cleveland", mascot: "Browns", conf: "AFC", div: "North", color: "#FF3C00", altColor: "#311D00", abbr: "CLE" },
+      { id: "pit", name: "Pittsburgh Steelers", city: "Pittsburgh", mascot: "Steelers", conf: "AFC", div: "North", color: "#FFB612", altColor: "#101820", abbr: "PIT" },
+
+      // AFC SOUTH
+      { id: "hou", name: "Houston Texans", city: "Houston", mascot: "Texans", conf: "AFC", div: "South", color: "#03202F", altColor: "#A71930", abbr: "HOU" },
+      { id: "ind", name: "Indianapolis Colts", city: "Indianapolis", mascot: "Colts", conf: "AFC", div: "South", color: "#002C5F", altColor: "#A2AAAD", abbr: "IND" },
+      { id: "jax", name: "Jacksonville Jaguars", city: "Jacksonville", mascot: "Jaguars", conf: "AFC", div: "South", color: "#006778", altColor: "#D7A22A", abbr: "JAX" },
+      { id: "ten", name: "Tennessee Titans", city: "Tennessee", mascot: "Titans", conf: "AFC", div: "South", color: "#0C2340", altColor: "#4B92DB", abbr: "TEN" },
+
+      // AFC WEST
+      { id: "den", name: "Denver Broncos", city: "Denver", mascot: "Broncos", conf: "AFC", div: "West", color: "#FB4F14", altColor: "#002244", abbr: "DEN" },
+      { id: "kc",  name: "Kansas City Chiefs", city: "Kansas City", mascot: "Chiefs", conf: "AFC", div: "West", color: "#E31837", altColor: "#FFB81C", abbr: "KC" },
+      { id: "lv",  name: "Las Vegas Raiders", city: "Las Vegas", mascot: "Raiders", conf: "AFC", div: "West", color: "#000000", altColor: "#A5ACAF", abbr: "LV" },
+      { id: "lac", name: "Los Angeles Chargers", city: "Los Angeles", mascot: "Chargers", conf: "AFC", div: "West", color: "#0080C6", altColor: "#FFC20E", abbr: "LAC" },
+
+      // NFC EAST
+      { id: "dal", name: "Dallas Cowboys", city: "Dallas", mascot: "Cowboys", conf: "NFC", div: "East", color: "#003594", altColor: "#041E42", abbr: "DAL" },
+      { id: "nyg", name: "New York Giants", city: "New York", mascot: "Giants", conf: "NFC", div: "East", color: "#0B2265", altColor: "#A71930", abbr: "NYG" },
+      { id: "phi", name: "Philadelphia Eagles", city: "Philadelphia", mascot: "Eagles", conf: "NFC", div: "East", color: "#004C54", altColor: "#A5ACAF", abbr: "PHI" },
+      { id: "was", name: "Washington Commanders", city: "Washington", mascot: "Commanders", conf: "NFC", div: "East", color: "#5A1414", altColor: "#FFB612", abbr: "WAS" },
+
+      // NFC NORTH
+      { id: "chi", name: "Chicago Bears", city: "Chicago", mascot: "Bears", conf: "NFC", div: "North", color: "#0B162A", altColor: "#C83803", abbr: "CHI" },
+      { id: "det", name: "Detroit Lions", city: "Detroit", mascot: "Lions", conf: "NFC", div: "North", color: "#0076B6", altColor: "#B0B7BC", abbr: "DET" },
+      { id: "gb",  name: "Green Bay Packers", city: "Green Bay", mascot: "Packers", conf: "NFC", div: "North", color: "#203731", altColor: "#FFB612", abbr: "GB" },
+      { id: "min", name: "Minnesota Vikings", city: "Minnesota", mascot: "Vikings", conf: "NFC", div: "North", color: "#4F2683", altColor: "#FFC62F", abbr: "MIN" },
+
+      // NFC SOUTH
+      { id: "atl", name: "Atlanta Falcons", city: "Atlanta", mascot: "Falcons", conf: "NFC", div: "South", color: "#A71930", altColor: "#000000", abbr: "ATL" },
+      { id: "car", name: "Carolina Panthers", city: "Carolina", mascot: "Panthers", conf: "NFC", div: "South", color: "#0085CA", altColor: "#101820", abbr: "CAR" },
+      { id: "no",  name: "New Orleans Saints", city: "New Orleans", mascot: "Saints", conf: "NFC", div: "South", color: "#D3BC8D", altColor: "#101820", abbr: "NO" },
+      { id: "tb",  name: "Tampa Bay Buccaneers", city: "Tampa Bay", mascot: "Buccaneers", conf: "NFC", div: "South", color: "#D50A0A", altColor: "#0A0A08", abbr: "TB" },
+
+      // NFC WEST
+      { id: "ari", name: "Arizona Cardinals", city: "Arizona", mascot: "Cardinals", conf: "NFC", div: "West", color: "#97233F", altColor: "#FFB612", abbr: "ARI" },
+      { id: "lar", name: "Los Angeles Rams", city: "Los Angeles", mascot: "Rams", conf: "NFC", div: "West", color: "#003594", altColor: "#FFA300", abbr: "LAR" },
+      { id: "sf",  name: "San Francisco 49ers", city: "San Francisco", mascot: "49ers", conf: "NFC", div: "West", color: "#AA0000", altColor: "#B3995D", abbr: "SF" },
+      { id: "sea", name: "Seattle Seahawks", city: "Seattle", mascot: "Seahawks", conf: "NFC", div: "West", color: "#002244", altColor: "#69BE28", abbr: "SEA" }
+    ];
+
+    // State management
+    const crossedState = new Set();
+    let currentStatusFilter = 'all'; // 'all', 'remaining', 'crossed'
+    let currentConfFilter = 'all';    // 'all', 'AFC', 'NFC'
+    let confettiTriggered = false;
+
+    function renderDivisions() {
+      const conferences = ['AFC', 'NFC'];
+      const divisions = ['East', 'North', 'South', 'West'];
+
+      conferences.forEach(conf => {
+        const targetContainer = document.getElementById(`${conf.toLowerCase()}-divisions-grid`);
+        if (!targetContainer) return;
+        targetContainer.innerHTML = '';
+
+        divisions.forEach(div => {
+          const divWrapper = document.createElement('div');
+          divWrapper.className = 'bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 flex flex-col space-y-2.5 shadow-sm';
+          divWrapper.setAttribute('data-div-conf', conf);
+          divWrapper.setAttribute('data-div-name', div);
+
+          // Division Title Header
+          divWrapper.innerHTML = `
+            <div class="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                ${conf} ${div}
+              </h3>
+              <span class="div-badge-count text-[11px] font-semibold text-slate-500">0/4</span>
+            </div>
+            <div class="div-teams-list space-y-2"></div>
+          `;
+
+          const teamsList = divWrapper.querySelector('.div-teams-list');
+          const divTeams = NFL_TEAMS.filter(t => t.conf === conf && t.div === div);
+
+          divTeams.forEach(team => {
+            const card = document.createElement('div');
+            card.id = `card-${team.id}`;
+            card.className = 'team-card cursor-pointer select-none rounded-lg p-2.5 bg-slate-950/90 border border-slate-800 flex items-center justify-between gap-2.5 hover:border-slate-600 transition-all';
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-label', `${team.name} cross-off toggle`);
+            card.setAttribute('data-team-id', team.id);
+
+            // Left side indicator with team abbreviation
+            const leftIndicator = `
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-md flex-shrink-0 flex items-center justify-center font-sport text-sm font-bold shadow" style="background-color: ${team.color}; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.15);">
+                  ${team.abbr}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="team-name-text text-sm font-black truncate leading-tight tracking-tight" style="color: ${team.color}; text-shadow: 0 0 1px rgba(0,0,0,0.5);">
+                    ${team.name}
+                  </div>
+                  <div class="text-[11px] text-slate-500 font-medium truncate">
+                    ${team.city} &bull; ${team.mascot}
+                  </div>
+                </div>
+              </div>
+            `;
+
+            // Right side checkbox visual
+            const checkVisual = `
+              <div class="check-box-icon w-5 h-5 rounded flex-shrink-0 border border-slate-700 bg-slate-900 flex items-center justify-center transition-colors">
+                <svg class="check-svg w-3.5 h-3.5 text-emerald-400 opacity-0 transition-opacity transform scale-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+            `;
+
+            card.innerHTML = leftIndicator + checkVisual;
+
+            // Click listener
+            card.addEventListener('click', () => toggleTeam(team.id, true));
+            card.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleTeam(team.id, true);
+              }
+            });
+
+            teamsList.appendChild(card);
+          });
+
+          targetContainer.appendChild(divWrapper);
+        });
+      });
+    }
+
+    function toggleTeam(teamId, userInteracted = false) {
+      const team = NFL_TEAMS.find(t => t.id === teamId);
+      if (!team) return;
+
+      if (crossedState.has(teamId)) {
+        crossedState.delete(teamId);
+        showFeedback(`Reopened ${team.name}`, 'info');
+      } else {
+        crossedState.add(teamId);
+        showFeedback(`Crossed off ${team.name}!`, 'success');
+        flashCard(teamId);
+      }
+
+      updateUI();
+      applyFilters();
+
+      // Check completion
+      if (crossedState.size === 32 && !confettiTriggered) {
+        triggerVictoryConfetti();
+        confettiTriggered = true;
+      } else if (crossedState.size < 32) {
+        confettiTriggered = false;
+      }
+    }
+
+    function flashCard(teamId) {
+      const card = document.getElementById(`card-${teamId}`);
+      if (!card) return;
+      card.classList.add('animate-success');
+      setTimeout(() => {
+        card.classList.remove('animate-success');
+      }, 400);
+    }
+
+    function updateUI() {
+      const total = NFL_TEAMS.length;
+      const count = crossedState.size;
+      const percent = Math.round((count / total) * 100);
+
+      // Header & Dashboard Counters
+      document.getElementById('header-counter').textContent = `${count} / ${total}`;
+      document.getElementById('progress-count').textContent = count;
+      document.getElementById('progress-percent').textContent = `(${percent}%)`;
+      document.getElementById('progress-bar-fill').style.width = `${percent}%`;
+
+      // Filter badges
+      document.getElementById('count-remaining').textContent = total - count;
+      document.getElementById('count-crossed').textContent = count;
+
+      // Update team cards visual styles
+      NFL_TEAMS.forEach(team => {
+        const card = document.getElementById(`card-${team.id}`);
+        if (!card) return;
+
+        const isCrossed = crossedState.has(team.id);
+        const checkIcon = card.querySelector('.check-box-icon');
+        const checkSvg = card.querySelector('.check-svg');
+
+        if (isCrossed) {
+          card.classList.add('is-crossed');
+          checkIcon.classList.add('bg-emerald-950', 'border-emerald-600');
+          checkIcon.classList.remove('bg-slate-900', 'border-slate-700');
+          checkSvg.classList.remove('opacity-0', 'scale-75');
+          checkSvg.classList.add('opacity-100', 'scale-100');
+        } else {
+          card.classList.remove('is-crossed');
+          checkIcon.classList.remove('bg-emerald-950', 'border-emerald-600');
+          checkIcon.classList.add('bg-slate-900', 'border-slate-700');
+          checkSvg.classList.remove('opacity-100', 'scale-100');
+          checkSvg.classList.add('opacity-0', 'scale-75');
+        }
+      });
+
+      // Update Conference Counters
+      const afcTotal = NFL_TEAMS.filter(t => t.conf === 'AFC').length;
+      const afcCrossed = NFL_TEAMS.filter(t => t.conf === 'AFC' && crossedState.has(t.id)).length;
+      document.getElementById('afc-count-badge').textContent = `${afcCrossed}/${afcTotal}`;
+
+      const nfcTotal = NFL_TEAMS.filter(t => t.conf === 'NFC').length;
+      const nfcCrossed = NFL_TEAMS.filter(t => t.conf === 'NFC' && crossedState.has(t.id)).length;
+      document.getElementById('nfc-count-badge').textContent = `${nfcCrossed}/${nfcTotal}`;
+
+      // Update Division Sub-counters
+      const conferences = ['AFC', 'NFC'];
+      const divisions = ['East', 'North', 'South', 'West'];
+      conferences.forEach(c => {
+        divisions.forEach(d => {
+          const divTeams = NFL_TEAMS.filter(t => t.conf === c && t.div === d);
+          const divCrossed = divTeams.filter(t => crossedState.has(t.id)).length;
+          const divWrapper = document.querySelector(`[data-div-conf="${c}"][data-div-name="${d}"]`);
+          if (divWrapper) {
+            const countLabel = divWrapper.querySelector('.div-badge-count');
+            if (countLabel) {
+              countLabel.textContent = `${divCrossed}/4`;
+              if (divCrossed === 4) {
+                countLabel.className = 'div-badge-count text-[11px] font-bold text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800';
+              } else {
+                countLabel.className = 'div-badge-count text-[11px] font-semibold text-slate-500';
+              }
+            }
+          }
+        });
+      });
+    }
+
+    function applyFilters() {
+      // Conference Section Visibility
+      const afcSec = document.getElementById('conference-afc');
+      const nfcSec = document.getElementById('conference-nfc');
+
+      if (currentConfFilter === 'AFC') {
+        afcSec.classList.remove('hidden');
+        nfcSec.classList.add('hidden');
+      } else if (currentConfFilter === 'NFC') {
+        afcSec.classList.add('hidden');
+        nfcSec.classList.remove('hidden');
+      } else {
+        afcSec.classList.remove('hidden');
+        nfcSec.classList.remove('hidden');
+      }
+
+      // Card Visibility based on crossed status
+      NFL_TEAMS.forEach(team => {
+        const card = document.getElementById(`card-${team.id}`);
+        if (!card) return;
+
+        const isCrossed = crossedState.has(team.id);
+
+        let show = true;
+        if (currentStatusFilter === 'remaining' && isCrossed) {
+          show = false;
+        } else if (currentStatusFilter === 'crossed' && !isCrossed) {
+          show = false;
+        }
+
+        if (show) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    }
+
+    const teamInput = document.getElementById('team-input');
+    const clearInputBtn = document.getElementById('clear-input-btn');
+    const feedbackBanner = document.getElementById('feedback-banner');
+
+    function cleanString(str) {
+      return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function checkInputForMatch(query) {
+      const cleaned = cleanString(query);
+      if (!cleaned || cleaned.length < 2) return;
+
+      // Search for uncrossed match first
+      const candidate = NFL_TEAMS.find(t => {
+        const fullClean = cleanString(t.name);
+        const cityClean = cleanString(t.city);
+        const mascotClean = cleanString(t.mascot);
+        const abbrClean = cleanString(t.abbr);
+
+        return (
+          fullClean === cleaned ||
+          mascotClean === cleaned ||
+          cityClean === cleaned ||
+          abbrClean === cleaned ||
+          (cleaned.length >= 3 && fullClean.includes(cleaned))
+        );
+      });
+
+      if (candidate) {
+        if (!crossedState.has(candidate.id)) {
+          crossedState.add(candidate.id);
+          updateUI();
+          applyFilters();
+          flashCard(candidate.id);
+          showFeedback(`Crossed off ${candidate.name}!`, 'success');
+          teamInput.value = '';
+          clearInputBtn.classList.add('hidden');
+
+          if (crossedState.size === 32 && !confettiTriggered) {
+            triggerVictoryConfetti();
+            confettiTriggered = true;
+          }
+        } else {
+          showFeedback(`${candidate.name} is already crossed off!`, 'info');
+        }
+      }
+    }
+
+    teamInput.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (val.trim().length > 0) {
+        clearInputBtn.classList.remove('hidden');
+      } else {
+        clearInputBtn.classList.add('hidden');
+      }
+      checkInputForMatch(val);
+    });
+
+    teamInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        checkInputForMatch(teamInput.value);
+      }
+    });
+
+    clearInputBtn.addEventListener('click', () => {
+      teamInput.value = '';
+      clearInputBtn.classList.add('hidden');
+      teamInput.focus();
+    });
+
+    let feedbackTimer = null;
+    function showFeedback(text, type = 'info') {
+      clearTimeout(feedbackTimer);
+      let colorClass = 'text-slate-300';
+      if (type === 'success') colorClass = 'text-emerald-400 font-semibold';
+      if (type === 'warn') colorClass = 'text-amber-400';
+
+      feedbackBanner.innerHTML = `
+        <span class="${colorClass} flex items-center gap-1.5 animate-fadeIn">
+          ${type === 'success' ? '&#10003; ' : '&bull; '} ${text}
+        </span>
+      `;
+
+      feedbackTimer = setTimeout(() => {
+        feedbackBanner.innerHTML = `<span>Tip: Click directly on any team card or type its name above.</span>`;
+      }, 3500);
+    }
+
+    function triggerVictoryConfetti() {
+      showFeedback('Touchdown! All 32 NFL teams have been crossed off!', 'success');
+      
+      try {
+        const count = 200;
+        const defaults = { origin: { y: 0.7 } };
+
+        function fire(particleRatio, opts) {
+          confetti(Object.assign({}, defaults, opts, {
+            particleCount: Math.floor(count * particleRatio)
+          }));
+        }
+
+        fire(0.25, { spread: 26, startVelocity: 55 });
+        fire(0.2,  { spread: 60 });
+        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+        fire(0.1,  { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+        fire(0.1,  { spread: 120, startVelocity: 45 });
+      } catch (err) {
+        // Confetti gracefully skipped if script blocked
+      }
+    }
+
+    // Quick Actions
+    document.getElementById('cross-all-btn').addEventListener('click', () => {
+      NFL_TEAMS.forEach(t => crossedState.add(t.id));
+      updateUI();
+      applyFilters();
+      showFeedback('All 32 teams crossed off!', 'success');
+      if (!confettiTriggered) {
+        triggerVictoryConfetti();
+        confettiTriggered = true;
+      }
+    });
+
+    function resetAll() {
+      crossedState.clear();
+      confettiTriggered = false;
+      updateUI();
+      applyFilters();
+      showFeedback('All teams restored.', 'info');
+      teamInput.value = '';
+      clearInputBtn.classList.add('hidden');
+    }
+
+    document.getElementById('uncheck-all-btn').addEventListener('click', resetAll);
+    document.getElementById('header-reset-btn').addEventListener('click', resetAll);
+
+    // Filter Buttons (Status)
+    document.querySelectorAll('.filter-status-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-status-btn').forEach(b => {
+          b.className = 'filter-status-btn px-3 py-1 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors';
+        });
+        btn.className = 'filter-status-btn px-3 py-1 rounded-md text-xs font-semibold bg-blue-600 text-white shadow-sm transition-colors';
+        currentStatusFilter = btn.getAttribute('data-filter');
+        applyFilters();
+      });
+    });
+
+    // Filter Buttons (Conference)
+    document.querySelectorAll('.conf-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.conf-filter-btn').forEach(b => {
+          b.className = 'conf-filter-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-800 transition-colors';
+        });
+        btn.className = 'conf-filter-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-700 text-white transition-colors border border-slate-600';
+        currentConfFilter = btn.getAttribute('data-conf');
+        applyFilters();
+      });
+    });
+
+    // Initialize application on load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDivisions();
+      updateUI();
+      applyFilters();
+    });
+  </script>
+</body>
+</html>
